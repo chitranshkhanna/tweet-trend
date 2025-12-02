@@ -1,14 +1,11 @@
 pipeline {
-    agent {
-        node {
-            label 'maven-slave'
-        }
-    }
+    agent { label 'maven-slave' }
 
     stages {
-        stage('Clone-code') {
+        stage('Clone Code') {
             steps {
-                git branch: 'https://github.com/chitranshkhanna/tweet-trend.git'
+                git branch: 'main',
+                    url: 'https://github.com/chitranshkhanna/tweet-trend.git'
             }
         }
     }
