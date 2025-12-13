@@ -2,7 +2,7 @@ pipeline {
     agent { label 'maven-slave' }
 
     tools {
-        maven 'maven-3.9.11'
+        maven 'Maven-3.9.11'
         jdk 'java8'
     }
 
