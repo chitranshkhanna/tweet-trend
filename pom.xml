@@ -6,6 +6,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Spring Boot (Java 17 compatible) -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -17,15 +18,18 @@
     <artifactId>demo-workshop</artifactId>
     <version>2.1.2</version>
     <packaging>jar</packaging>
+
     <name>demo-workshop</name>
     <description>Demo project for Spring Boot</description>
 
+    <!-- ✅ Java 17 -->
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
     </properties>
 
     <dependencies>
-        <!-- Spring Boot Starter -->
+
+        <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
@@ -56,6 +60,7 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -67,26 +72,24 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Maven Compiler Plugin for Java 21 -->
+            <!-- ✅ Maven Compiler Plugin (Java 17 ONLY) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
-                    <release>21</release>
+                    <release>17</release>
                 </configuration>
             </plugin>
 
-            <!-- Surefire (Java 21 compatible) -->
+            <!-- Surefire -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
 
-            <!-- JaCoCo (Java 21 compatible) -->
+            <!-- JaCoCo -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
