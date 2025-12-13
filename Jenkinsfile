@@ -18,7 +18,7 @@ pipeline {
                 sh '''
                   echo "JAVA_HOME=$JAVA_HOME"
                   javac -version
-                  mvn clean deploy
+                  mvn clean package
                 '''
             }
         }
