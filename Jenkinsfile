@@ -1,9 +1,9 @@
 pipeline {
     agent { label 'maven-slave' }
 
-    tools {
-        maven 'Maven-3.9.11'
-        jdk 'java21' // your configured JDK name
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-21'  // path to Java 21 on agent
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
     stages {
