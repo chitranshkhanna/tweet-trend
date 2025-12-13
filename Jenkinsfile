@@ -1,8 +1,9 @@
 pipeline {
     agent { label 'maven-slave' }
 
-    environment {
-        PATH = "/opt/apache-maven-3.9.11/bin:${env.PATH}"
+    tools {
+        maven 'maven-3.9.11'
+        jdk 'java8'
     }
 
     stages {
