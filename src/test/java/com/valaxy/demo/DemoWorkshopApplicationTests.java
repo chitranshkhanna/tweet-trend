@@ -1,16 +1,14 @@
-package com.stalin.demo;
+package com.valaxy.demo;
+
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.*;
-
 @SpringBootTest
 class DemoWorkshopApplicationTests {
 
-	@Test
-	void contextLoads() {
-		List li = new ArrayList<String> ();
-	}
-
+    @Test
+    void contextLoads() {
+        // This test verifies that the Spring application context loads successfully
+    }
 }

@@ -1,4 +1,4 @@
-package com.stalin.demo.controller;
+package com.valaxy.demo.controller;
 
 import java.io.IOException;
 import java.util.HashMap;
