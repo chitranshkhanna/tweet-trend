@@ -34,7 +34,7 @@ pipeline {
 
         stage('SonarQube analysis') {
             environment {
-                SCANNER_HOME = tool 'SonarScanner'
+                SCANNER_HOME = tool 'valaxy-sonar-scanner'
             }
             steps {
                 withSonarQubeEnv('SonarQube') {
