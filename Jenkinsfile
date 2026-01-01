@@ -14,21 +14,13 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build & Test') {
             steps {
                 sh '''
                     echo "JAVA_HOME=$JAVA_HOME"
                     javac -version
-                    mvn clean package
+                    mvn clean test
                 '''
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo "----------- unit test started -----------"
-                sh 'mvn surefire-report:report'
-                echo "----------- unit test Completed -----------"
             }
         }
 
@@ -37,15 +29,15 @@ pipeline {
                 SCANNER_HOME = tool 'valaxy-sonar-scanner'
             }
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
+                withSonarQubeEnv('valaxy-sonarqube-server') {
+                    sh """
                         ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectKey=demo-workshop \
                         -Dsonar.projectName=demo-workshop \
                         -Dsonar.sources=src/main/java \
                         -Dsonar.tests=src/test/java \
                         -Dsonar.java.binaries=target/classes
-                    '''
+                    """
                 }
             }
         }
