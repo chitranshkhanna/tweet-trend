@@ -11,12 +11,14 @@ pipeline {
     stages {
         stage("Checkout") {
             steps {
+                // Pulls the code from your Git repository
                 checkout scm
             }
         }
 
         stage("Build and Package") {
             steps {
+                // Compiles the Java code and creates the JAR file in the target folder
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -34,6 +36,7 @@ pipeline {
 
         stage("Create jarstaging") {
             steps {
+                // Separates the artifact for clean uploading
                 sh "mkdir -p jarstaging && cp target/*.jar jarstaging/"
             }
         }
@@ -45,12 +48,13 @@ pipeline {
                     def server = Artifactory.newServer(url: registry + "/artifactory", credentialsId: "artifact-cred")
                     def props = "buildid=${env.BUILD_ID},commitid=${env.GIT_COMMIT}"
                     
-                    // FIXED: Changed target from 'libs-release-local' to 'maven-local' as seen in your screenshot
+                    // TARGET: Pointing directly to your physical 'libs-release-local' repository
+                    // Using flat: true ensures the file is placed directly in the repo root
                     def uploadSpec = """{
                         "files": [
                             {
                                 "pattern": "jarstaging/*.jar",
-                                "target": "maven-local/",
+                                "target": "libs-release-local/",
                                 "flat": "true",
                                 "props": "${props}"
                             }
@@ -66,6 +70,7 @@ pipeline {
 
         stage("Archive") {
             steps {
+                // Keeps a copy of the JAR within the Jenkins build history
                 archiveArtifacts artifacts: "jarstaging/*.jar", fingerprint: true
             }
         }
