@@ -6,7 +6,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Spring Boot (Java 17 compatible) -->
+    <!-- Spring Boot Parent (Java 17 compatible) -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -22,12 +22,12 @@
     <name>demo-workshop</name>
     <description>Demo project for Spring Boot</description>
 
-    <!-- Java 17 -->
+    <!-- Java Version -->
     <properties>
         <java.version>17</java.version>
     </properties>
 
-    <!-- 🔥 ARTIFACT LOCATION (JFrog) -->
+    <!-- JFrog Artifactory -->
     <distributionManagement>
         <repository>
             <id>jfrog</id>
@@ -72,13 +72,19 @@
     </dependencies>
 
     <build>
+
+        <!-- Predictable JAR name -->
+        <finalName>${project.artifactId}-${project.version}</finalName>
+
         <plugins>
 
+            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
+            <!-- Java 17 Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -88,12 +94,14 @@
                 </configuration>
             </plugin>
 
+            <!-- Unit Tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
 
+            <!-- Code Coverage (Sonar-friendly) -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
