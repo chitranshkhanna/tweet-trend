@@ -41,11 +41,25 @@ pipeline {
         stage("Jar Publish") {
             steps {
                 script {
+                    echo "<--------------- Jar Publish Started --------------->"
                     def server = Artifactory.newServer(url: registry + "/artifactory", credentialsId: "artifact-cred")
                     def props = "buildid=${env.BUILD_ID},commitid=${env.GIT_COMMIT}"
-                    // Using a single-line string to prevent bracket mismatch errors
-                    def uploadSpec = """{"files": [{"pattern": "jarstaging/(*)","target": "libs-release-local/{1}","flat": "false","props": "${props}","exclusions": ["*.sha1", "*.md5"]}]}"""
-                    server.upload(uploadSpec)
+                    
+                    // FIXED: Changed target from 'libs-release-local' to 'maven-local' as seen in your screenshot
+                    def uploadSpec = """{
+                        "files": [
+                            {
+                                "pattern": "jarstaging/*.jar",
+                                "target": "maven-local/",
+                                "flat": "true",
+                                "props": "${props}"
+                            }
+                        ]
+                    }"""
+                    
+                    def buildInfo = server.upload(uploadSpec)
+                    server.publishBuildInfo(buildInfo)
+                    echo "<--------------- Jar Publish Ended --------------->"
                 }
             }
         }
