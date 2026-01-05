@@ -32,14 +32,14 @@ pipeline {
             }
             steps {
                 withSonarQubeEnv('valaxy-sonarqube-server') {
-                    sh '''
+                    sh """
                         ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectKey=demo-workshop \
                         -Dsonar.projectName=demo-workshop \
                         -Dsonar.sources=src/main/java \
                         -Dsonar.tests=src/test/java \
                         -Dsonar.java.binaries=target/classes
-                    '''
+                    """
                 }
             }
         }
