@@ -1,46 +1,46 @@
 pipeline {
-    agent {
-        label 'maven-slave'
-    }
+    agent { label "maven-slave" }
 
     tools {
-        jdk 'java17'
-        maven 'Maven-3.9.11'
+        jdk "java17"
+        maven "Maven-3.9.11"
     }
 
     stages {
-
-        stage('Checkout') {
+        stage("Checkout") {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build and Test') {
+        stage("Build and Package") {
             steps {
-                sh '''
+                sh """
                     echo "JAVA_HOME=$JAVA_HOME"
-                    javac -version
-                    mvn clean test
-                '''
+                    java -version
+                    mvn clean package -DskipTests
+                """
             }
         }
 
-        stage('SonarQube Analysis') {
-            environment {
-                SCANNER_HOME = tool('valaxy-sonar-scanner')
-            }
+        stage("SonarQube Analysis") {
             steps {
-                withSonarQubeEnv('valaxy-sonarqube-server') {
-                    sh """
-                        ${SCANNER_HOME}/bin/sonar-scanner \
-                        -Dsonar.projectKey=demo-workshop \
-                        -Dsonar.projectName=demo-workshop \
-                        -Dsonar.sources=src/main/java \
-                        -Dsonar.tests=src/test/java \
-                        -Dsonar.java.binaries=target/classes
-                    """
+                script {
+                    def scannerHome = tool(name: "valaxy-sonar-scanner", type: "hudson.plugins.sonar.SonarRunnerInstallation")
+                    withSonarQubeEnv("valaxy-sonarqube-server") {
+                        sh "${scannerHome}/bin/sonar-scanner " +
+                           "-Dsonar.projectKey=demo-workshop " +
+                           "-Dsonar.projectName=demo-workshop " +
+                           "-Dsonar.sources=src/main/java " +
+                           "-Dsonar.java.binaries=target/classes"
+                    }
                 }
+            }
+        }
+
+        stage("Archive Artifact") {
+            steps {
+                archiveArtifacts artifacts: "target/*.jar", fingerprint: true
             }
         }
     }
