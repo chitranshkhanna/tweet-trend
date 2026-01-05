@@ -41,7 +41,7 @@ pipeline {
         stage("Jar Publish") {
             steps {
                 script {
-                    def server = Artifactory.newServer(url: registry + "/artifactory", credentialsId: "artfiact-cred")
+                    def server = Artifactory.newServer(url: registry + "/artifactory", credentialsId: "artifact-cred")
                     def props = "buildid=${env.BUILD_ID},commitid=${env.GIT_COMMIT}"
                     // Using a single-line string to prevent bracket mismatch errors
                     def uploadSpec = """{"files": [{"pattern": "jarstaging/(*)","target": "libs-release-local/{1}","flat": "false","props": "${props}","exclusions": ["*.sha1", "*.md5"]}]}"""
