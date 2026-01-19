@@ -1,4 +1,6 @@
-def registry = "https://trialolvllu.jfrog.io"
+def registry = 'https://trialolvllu.jfrog.io'
+def imageName = 'trialolvllu.jfrog.io/valaxy-docker-local/ttrend'
+def version = '2.1.4'
 
 pipeline {
     agent { label "maven-slave" }
@@ -74,5 +76,26 @@ pipeline {
                 archiveArtifacts artifacts: "jarstaging/*.jar", fingerprint: true
             }
         }
+        stage(" Docker Build ") {
+            steps {
+                script {
+                echo '<--------------- Docker Build Started --------------->'
+                app = docker.build(imageName+":"+version)
+                echo '<--------------- Docker Build Ends --------------->'
+        }
+      }
+    }
+
+        stage (" Docker Publish "){
+            steps {
+            script {
+               echo '<--------------- Docker Publish Started --------------->'  
+                docker.withRegistry(registry, 'artfiact-cred'){
+                    app.push()
+                }    
+               echo '<--------------- Docker Publish Ended --------------->'  
+            }
+        }
+    }    
     }
 }
