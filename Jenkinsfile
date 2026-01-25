@@ -1,6 +1,7 @@
 def registry = 'https://trialolvllu.jfrog.io'
 def imageName = 'trialolvllu.jfrog.io/valaxy-docker-local/ttrend'
 def version = '2.1.4'
+def app   // <-- global scope for docker image
 
 pipeline {
     agent { label "maven-slave" }
@@ -11,16 +12,15 @@ pipeline {
     }
 
     stages {
+
         stage("Checkout") {
             steps {
-                // Pulls the code from your Git repository
                 checkout scm
             }
         }
 
         stage("Build and Package") {
             steps {
-                // Compiles the Java code and creates the JAR file in the target folder
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -28,9 +28,19 @@ pipeline {
         stage("SonarQube Analysis") {
             steps {
                 script {
-                    def scannerHome = tool(name: "valaxy-sonar-scanner", type: "hudson.plugins.sonar.SonarRunnerInstallation")
+                    def scannerHome = tool(
+                        name: "valaxy-sonar-scanner",
+                        type: "hudson.plugins.sonar.SonarRunnerInstallation"
+                    )
+
                     withSonarQubeEnv("valaxy-sonarqube-server") {
-                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=demo-workshop -Dsonar.projectName=demo-workshop -Dsonar.sources=src/main/java -Dsonar.java.binaries=target/classes"
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=demo-workshop \
+                        -Dsonar.projectName=demo-workshop \
+                        -Dsonar.sources=src/main/java \
+                        -Dsonar.java.binaries=target/classes
+                        """
                     }
                 }
             }
@@ -38,7 +48,6 @@ pipeline {
 
         stage("Create jarstaging") {
             steps {
-                // Separates the artifact for clean uploading
                 sh "mkdir -p jarstaging && cp target/*.jar jarstaging/"
             }
         }
@@ -47,11 +56,14 @@ pipeline {
             steps {
                 script {
                     echo "<--------------- Jar Publish Started --------------->"
-                    def server = Artifactory.newServer(url: registry + "/artifactory", credentialsId: "artifact-cred")
+
+                    def server = Artifactory.newServer(
+                        url: registry + "/artifactory",
+                        credentialsId: "artifact-cred"
+                    )
+
                     def props = "buildid=${env.BUILD_ID},commitid=${env.GIT_COMMIT}"
-                    
-                    // TARGET: Pointing directly to your physical 'libs-release-local' repository
-                    // Using flat: true ensures the file is placed directly in the repo root
+
                     def uploadSpec = """{
                         "files": [
                             {
@@ -62,9 +74,10 @@ pipeline {
                             }
                         ]
                     }"""
-                    
+
                     def buildInfo = server.upload(uploadSpec)
                     server.publishBuildInfo(buildInfo)
+
                     echo "<--------------- Jar Publish Ended --------------->"
                 }
             }
@@ -72,30 +85,31 @@ pipeline {
 
         stage("Archive") {
             steps {
-                // Keeps a copy of the JAR within the Jenkins build history
                 archiveArtifacts artifacts: "jarstaging/*.jar", fingerprint: true
             }
         }
-        stage(" Docker Build ") {
+
+        stage("Docker Build") {
             steps {
                 script {
-                echo '<--------------- Docker Build Started --------------->'
-                app = docker.build(imageName+":"+version)
-                echo '<--------------- Docker Build Ends --------------->'
-        }
-      }
-    }
-
-        stage (" Docker Publish "){
-            steps {
-            script {
-               echo '<--------------- Docker Publish Started --------------->'  
-                docker.withRegistry(registry, 'artifact-cred'){
-                    app.push()
-                }    
-               echo '<--------------- Docker Publish Ended --------------->'  
+                    echo '<--------------- Docker Build Started --------------->'
+                    app = docker.build("${imageName}:${version}")
+                    echo '<--------------- Docker Build Ends --------------->'
+                }
             }
         }
-    }    
+
+        stage("Docker Publish") {
+            steps {
+                script {
+                    echo '<--------------- Docker Publish Started --------------->'
+                    docker.withRegistry(registry, 'artifact-cred') {
+                        app.push()
+                    }
+                    echo '<--------------- Docker Publish Ended --------------->'
+                }
+            }
+        }
+
     }
 }
