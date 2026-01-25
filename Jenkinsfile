@@ -52,6 +52,17 @@ pipeline {
             }
         }
 
+        stage('Verify AWS Access') {
+    steps {
+        withAWS(credentials: 'aws-jenkins', region: 'ap-south-1') {
+            sh 'aws sts get-caller-identity'
+            sh 'aws codeartifact list-repositories --domain my-domain'
+            sh 'aws ecr describe-repositories'
+        }
+    }
+}
+
+
         stage("Jar Publish") {
             steps {
                 script {
