@@ -1,7 +1,9 @@
-def registry = 'https://trialolvllu.jfrog.io'
-def imageName = 'trialolvllu.jfrog.io/valaxy-docker-local/ttrend'
-def version = '2.1.4'
-def app   // <-- global scope for docker image
+def awsRegion = 'us-east-1'
+def accountId = '374031960771'   // 🔁 replace with your AWS account ID
+def ecrRepo   = 'ttrend'
+def imageName = "${accountId}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepo}"
+def version   = '2.1.4'
+def app   // global scope for docker image
 
 pipeline {
     agent { label "maven-slave" }
@@ -52,44 +54,31 @@ pipeline {
             }
         }
 
+        /* ================= AWS VERIFICATION ================= */
         stage('Verify AWS Access') {
-    steps {
-        withAWS(credentials: 'aws-jenkins', region: 'us-east-1') {
-            sh 'aws sts get-caller-identity'
-            sh 'aws codeartifact list-repositories --domain my-domain'
-            sh 'aws ecr describe-repositories'
-        }
-    }
-}
-
-
-        stage("Jar Publish") {
             steps {
-                script {
-                    echo "<--------------- Jar Publish Started --------------->"
+                withAWS(credentials: 'aws-jenkins', region: awsRegion) {
+                    sh 'aws sts get-caller-identity'
+                    sh 'aws codeartifact list-repositories --domain my-domain'
+                    sh 'aws ecr describe-repositories'
+                }
+            }
+        }
 
-                    def server = Artifactory.newServer(
-                        url: registry + "/artifactory",
-                        credentialsId: "artifact-cred"
-                    )
+        /* ================= JAR PUBLISH (CodeArtifact) ================= */
+        stage("Jar Publish to CodeArtifact") {
+            steps {
+                withAWS(credentials: 'aws-jenkins', region: awsRegion) {
+                    sh """
+                      aws codeartifact login \
+                        --tool maven \
+                        --domain my-domain \
+                        --domain-owner ${accountId} \
+                        --repository my-maven-repo \
+                        --region ${awsRegion}
 
-                    def props = "buildid=${env.BUILD_ID},commitid=${env.GIT_COMMIT}"
-
-                    def uploadSpec = """{
-                        "files": [
-                            {
-                                "pattern": "jarstaging/*.jar",
-                                "target": "libs-release-local/",
-                                "flat": "true",
-                                "props": "${props}"
-                            }
-                        ]
-                    }"""
-
-                    def buildInfo = server.upload(uploadSpec)
-                    server.publishBuildInfo(buildInfo)
-
-                    echo "<--------------- Jar Publish Ended --------------->"
+                      mvn deploy -DskipTests
+                    """
                 }
             }
         }
@@ -100,6 +89,7 @@ pipeline {
             }
         }
 
+        /* ================= DOCKER BUILD ================= */
         stage("Docker Build") {
             steps {
                 script {
@@ -110,17 +100,29 @@ pipeline {
             }
         }
 
-        stage("Docker Publish") {
+        /* ================= ECR LOGIN ================= */
+        stage("Login to ECR") {
             steps {
-                script {
-                    echo '<--------------- Docker Publish Started --------------->'
-                    docker.withRegistry(registry, 'artifact-cred') {
-                        app.push()
-                    }
-                    echo '<--------------- Docker Publish Ended --------------->'
+                withAWS(credentials: 'aws-jenkins', region: awsRegion) {
+                    sh """
+                      aws ecr get-login-password \
+                      | docker login \
+                        --username AWS \
+                        --password-stdin ${accountId}.dkr.ecr.${awsRegion}.amazonaws.com
+                    """
                 }
             }
         }
 
+        /* ================= DOCKER PUSH ================= */
+        stage("Docker Publish") {
+            steps {
+                script {
+                    echo '<--------------- Docker Publish Started --------------->'
+                    app.push()
+                    echo '<--------------- Docker Publish Ended --------------->'
+                }
+            }
+        }
     }
 }
