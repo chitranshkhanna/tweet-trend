@@ -1,9 +1,9 @@
 def awsRegion = 'us-east-1'
-def accountId = '374031960771'   // 🔁 replace with your AWS account ID
+def accountId = '374031960771'
 def ecrRepo   = 'ttrend'
 def imageName = "${accountId}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepo}"
 def version   = '2.1.4'
-def app   // global scope for docker image
+def app
 
 pipeline {
     agent { label "maven-slave" }
@@ -48,24 +48,18 @@ pipeline {
             }
         }
 
-        stage("Create jarstaging") {
-            steps {
-                sh "mkdir -p jarstaging && cp target/*.jar jarstaging/"
-            }
-        }
-
-        /* ================= AWS VERIFICATION ================= */
+        /* ================= AWS VERIFICATION (SAFE) ================= */
         stage('Verify AWS Access') {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
                     sh 'aws sts get-caller-identity'
-                    sh 'aws codeartifact list-repositories --domain my-domain'
+                    sh 'aws codeartifact list-repositories'
                     sh 'aws ecr describe-repositories'
                 }
             }
         }
 
-        /* ================= JAR PUBLISH (CodeArtifact) ================= */
+        /* ================= JAR PUBLISH (AWS CodeArtifact) ================= */
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
@@ -80,12 +74,6 @@ pipeline {
                       mvn deploy -DskipTests
                     """
                 }
-            }
-        }
-
-        stage("Archive") {
-            steps {
-                archiveArtifacts artifacts: "jarstaging/*.jar", fingerprint: true
             }
         }
 
