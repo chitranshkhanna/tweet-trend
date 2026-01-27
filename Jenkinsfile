@@ -13,6 +13,18 @@ pipeline {
         maven "Maven-3.9.11"
     }
 
+    /* ================= GLOBAL MEMORY SETTINGS ================= */
+    environment {
+        // Maven JVM memory
+        MAVEN_OPTS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
+
+        // Applies to ALL Java processes (Sonar, Maven, etc.)
+        JAVA_TOOL_OPTIONS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
+
+        // Prevent Jenkins from killing long shells
+        MAVEN_OPTS_APPEND = "true"
+    }
+
     stages {
 
         stage("Checkout") {
@@ -23,7 +35,10 @@ pipeline {
 
         stage("Build and Package") {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh '''
+                  echo "MAVEN_OPTS=$MAVEN_OPTS"
+                  mvn clean package -DskipTests
+                '''
             }
         }
 
@@ -41,14 +56,15 @@ pipeline {
                         -Dsonar.projectKey=demo-workshop \
                         -Dsonar.projectName=demo-workshop \
                         -Dsonar.sources=src/main/java \
-                        -Dsonar.java.binaries=target/classes
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.ce.javaOpts="-Xmx1g"
                         """
                     }
                 }
             }
         }
 
-        /* ================= AWS VERIFICATION (SAFE) ================= */
+        /* ================= AWS VERIFICATION ================= */
         stage('Verify AWS Access') {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
@@ -59,7 +75,7 @@ pipeline {
             }
         }
 
-        /* ================= JAR PUBLISH (AWS CodeArtifact) ================= */
+        /* ================= JAR PUBLISH ================= */
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
