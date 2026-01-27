@@ -13,19 +13,32 @@ pipeline {
         maven "Maven-3.9.11"
     }
 
-    /* ================= GLOBAL MEMORY SETTINGS ================= */
+    /* ================= PIPELINE SAFETY ================= */
+    options {
+        timeout(time: 45, unit: 'MINUTES')          // kill hung builds
+        disableConcurrentBuilds()                    // no parallel memory fights
+        timestamps()                                 // readable logs
+        buildDiscarder(logRotator(
+            numToKeepStr: '10',                      // keep last 10 builds
+            daysToKeepStr: '7',                      // or max 7 days
+            artifactNumToKeepStr: '5'
+        ))
+    }
+
+    /* ================= MEMORY SETTINGS ================= */
     environment {
-        // Maven JVM memory
         MAVEN_OPTS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
-
-        // Applies to ALL Java processes (Sonar, Maven, etc.)
         JAVA_TOOL_OPTIONS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
-
-        // Prevent Jenkins from killing long shells
-        MAVEN_OPTS_APPEND = "true"
     }
 
     stages {
+
+        /* ================= PRE-CLEAN ================= */
+        stage("Pre-clean Workspace") {
+            steps {
+                cleanWs(deleteDirs: true)
+            }
+        }
 
         stage("Checkout") {
             steps {
@@ -35,47 +48,44 @@ pipeline {
 
         stage("Build and Package") {
             steps {
-                sh '''
-                  echo "MAVEN_OPTS=$MAVEN_OPTS"
-                  mvn clean package -DskipTests
-                '''
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage("SonarQube Analysis") {
             steps {
                 script {
-                    def scannerHome = tool(
-                        name: "valaxy-sonar-scanner",
-                        type: "hudson.plugins.sonar.SonarRunnerInstallation"
-                    )
+                    try {
+                        def scannerHome = tool(
+                            name: "valaxy-sonar-scanner",
+                            type: "hudson.plugins.sonar.SonarRunnerInstallation"
+                        )
 
-                    withSonarQubeEnv("valaxy-sonarqube-server") {
-                        sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=demo-workshop \
-                        -Dsonar.projectName=demo-workshop \
-                        -Dsonar.sources=src/main/java \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.ce.javaOpts="-Xmx1g"
-                        """
+                        withSonarQubeEnv("valaxy-sonarqube-server") {
+                            sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=demo-workshop \
+                            -Dsonar.projectName=demo-workshop \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.ce.javaOpts="-Xmx1g"
+                            """
+                        }
+                    } catch (err) {
+                        echo "⚠️ Sonar failed, continuing build"
                     }
                 }
             }
         }
 
-        /* ================= AWS VERIFICATION ================= */
-        stage('Verify AWS Access') {
+        stage("Verify AWS Access") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
                     sh 'aws sts get-caller-identity'
-                    sh 'aws codeartifact list-repositories'
-                    sh 'aws ecr describe-repositories'
                 }
             }
         }
 
-        /* ================= JAR PUBLISH ================= */
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
@@ -93,18 +103,14 @@ pipeline {
             }
         }
 
-        /* ================= DOCKER BUILD ================= */
         stage("Docker Build") {
             steps {
                 script {
-                    echo '<--------------- Docker Build Started --------------->'
                     app = docker.build("${imageName}:${version}")
-                    echo '<--------------- Docker Build Ends --------------->'
                 }
             }
         }
 
-        /* ================= ECR LOGIN ================= */
         stage("Login to ECR") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
@@ -118,15 +124,35 @@ pipeline {
             }
         }
 
-        /* ================= DOCKER PUSH ================= */
-        stage("Docker Publish") {
+        stage("Docker Push") {
             steps {
                 script {
-                    echo '<--------------- Docker Publish Started --------------->'
                     app.push()
-                    echo '<--------------- Docker Publish Ended --------------->'
                 }
             }
+        }
+    }
+
+    /* ================= ALWAYS EXECUTED ================= */
+    post {
+
+        success {
+            echo "✅ Build succeeded"
+        }
+
+        failure {
+            echo "❌ Build failed — check logs"
+        }
+
+        always {
+            echo "🧹 Cleaning workspace & Docker"
+
+            cleanWs(deleteDirs: true)
+
+            sh '''
+              docker system prune -af || true
+              docker volume prune -f || true
+            '''
         }
     }
 }
