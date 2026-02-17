@@ -2,7 +2,7 @@ def awsRegion = 'us-east-1'
 def accountId = '374031960771'
 def ecrRepo   = 'ttrend'
 def imageName = "${accountId}.dkr.ecr.${awsRegion}.amazonaws.com/${ecrRepo}"
-def version   = '2.1.4'
+def version   = "${env.BUILD_NUMBER}"
 def app
 
 pipeline {
@@ -13,19 +13,17 @@ pipeline {
         maven "Maven-3.9.11"
     }
 
-    /* ================= PIPELINE SAFETY ================= */
     options {
-        timeout(time: 45, unit: 'MINUTES')          // kill hung builds
-        disableConcurrentBuilds()                    // no parallel memory fights
-        timestamps()                                 // readable logs
+        timeout(time: 45, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        timestamps()
         buildDiscarder(logRotator(
-            numToKeepStr: '10',                      // keep last 10 builds
-            daysToKeepStr: '7',                      // or max 7 days
+            numToKeepStr: '10',
+            daysToKeepStr: '7',
             artifactNumToKeepStr: '5'
         ))
     }
 
-    /* ================= MEMORY SETTINGS ================= */
     environment {
         MAVEN_OPTS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
         JAVA_TOOL_OPTIONS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
@@ -33,7 +31,6 @@ pipeline {
 
     stages {
 
-        /* ================= PRE-CLEAN ================= */
         stage("Pre-clean Workspace") {
             steps {
                 cleanWs(deleteDirs: true)
@@ -55,25 +52,28 @@ pipeline {
         stage("SonarQube Analysis") {
             steps {
                 script {
-                    try {
-                        def scannerHome = tool(
-                            name: "valaxy-sonar-scanner",
-                            type: "hudson.plugins.sonar.SonarRunnerInstallation"
-                        )
+                    def scannerHome = tool(
+                        name: "valaxy-sonar-scanner",
+                        type: "hudson.plugins.sonar.SonarRunnerInstallation"
+                    )
 
-                        withSonarQubeEnv("valaxy-sonarqube-server") {
-                            sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=demo-workshop \
-                            -Dsonar.projectName=demo-workshop \
-                            -Dsonar.sources=src/main/java \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.ce.javaOpts="-Xmx1g"
-                            """
-                        }
-                    } catch (err) {
-                        echo "⚠️ Sonar failed, continuing build"
+                    withSonarQubeEnv("valaxy-sonarqube-server") {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=demo-workshop \
+                        -Dsonar.projectName=demo-workshop \
+                        -Dsonar.sources=src/main/java \
+                        -Dsonar.java.binaries=target/classes
+                        """
                     }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -86,18 +86,18 @@ pipeline {
             }
         }
 
+        // ✅ FIXED CODEARTIFACT STAGE
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
                     sh """
-                      aws codeartifact login \
-                        --tool maven \
-                        --domain my-domain \
-                        --domain-owner ${accountId} \
-                        --repository my-maven-repo \
-                        --region ${awsRegion}
+                        export CODEARTIFACT_AUTH_TOKEN=\$(aws codeartifact get-authorization-token \
+                          --domain my-domain \
+                          --domain-owner ${accountId} \
+                          --query authorizationToken \
+                          --output text)
 
-                      mvn deploy -DskipTests
+                        mvn deploy -DskipTests
                     """
                 }
             }
@@ -133,7 +133,6 @@ pipeline {
         }
     }
 
-    /* ================= ALWAYS EXECUTED ================= */
     post {
 
         success {
@@ -149,10 +148,8 @@ pipeline {
 
             cleanWs(deleteDirs: true)
 
-            sh '''
-              docker system prune -af || true
-              docker volume prune -f || true
-            '''
+            // safer cleanup (only remove this image)
+            sh "docker rmi ${imageName}:${version} || true"
         }
     }
 }
