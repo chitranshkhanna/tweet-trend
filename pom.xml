@@ -80,9 +80,13 @@
 
         <plugins>
 
+            <!-- ✅ FIXED Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.valaxy.demo.DemoWorkshopApplication</mainClass>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -121,6 +125,7 @@
             </plugin>
 
         </plugins>
+
     </build>
 
 </project>
