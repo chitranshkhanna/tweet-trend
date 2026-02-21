@@ -27,6 +27,8 @@ pipeline {
     environment {
         MAVEN_OPTS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
         JAVA_TOOL_OPTIONS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
+        DOMAIN = "YOUR_DOMAIN"
+        REPO   = "YOUR_REPO"
     }
 
     stages {
@@ -70,7 +72,6 @@ pipeline {
             }
         }
 
-        // ✅ FIXED QUALITY GATE (Will fail only if ERROR)
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -94,15 +95,17 @@ pipeline {
             }
         }
 
+        // ✅ FIXED CODEARTIFACT STAGE
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
                     sh """
-                        export CODEARTIFACT_AUTH_TOKEN=\$(aws codeartifact get-authorization-token \
-                          --domain my-domain \
+                        aws codeartifact login \
+                          --tool maven \
+                          --domain ${DOMAIN} \
                           --domain-owner ${accountId} \
-                          --query authorizationToken \
-                          --output text)
+                          --repository ${REPO} \
+                          --region ${awsRegion}
 
                         mvn deploy -DskipTests
                     """
@@ -152,10 +155,7 @@ pipeline {
 
         always {
             echo "🧹 Cleaning workspace & Docker"
-
             cleanWs(deleteDirs: true)
-
-            // Safe image cleanup
             sh "docker rmi ${imageName}:${version} || true"
         }
     }
