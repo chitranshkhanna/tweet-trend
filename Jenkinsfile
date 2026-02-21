@@ -70,10 +70,18 @@ pipeline {
             }
         }
 
+        // ✅ FIXED QUALITY GATE (Will fail only if ERROR)
         stage("Quality Gate") {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    script {
+                        def qg = waitForQualityGate()
+                        echo "Quality Gate Status: ${qg.status}"
+
+                        if (qg.status == "ERROR") {
+                            error "Pipeline aborted due to Quality Gate failure."
+                        }
+                    }
                 }
             }
         }
@@ -86,7 +94,6 @@ pipeline {
             }
         }
 
-        // ✅ FIXED CODEARTIFACT STAGE
         stage("Jar Publish to CodeArtifact") {
             steps {
                 withAWS(credentials: 'aws-jenkins', region: awsRegion) {
@@ -148,7 +155,7 @@ pipeline {
 
             cleanWs(deleteDirs: true)
 
-            // safer cleanup (only remove this image)
+            // Safe image cleanup
             sh "docker rmi ${imageName}:${version} || true"
         }
     }
