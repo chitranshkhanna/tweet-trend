@@ -27,8 +27,6 @@ pipeline {
     environment {
         MAVEN_OPTS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
         JAVA_TOOL_OPTIONS = "-Xms512m -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
-        DOMAIN = "YOUR_DOMAIN"
-        REPO   = "YOUR_REPO"
     }
 
     stages {
@@ -78,7 +76,6 @@ pipeline {
                     script {
                         def qg = waitForQualityGate()
                         echo "Quality Gate Status: ${qg.status}"
-
                         if (qg.status == "ERROR") {
                             error "Pipeline aborted due to Quality Gate failure."
                         }
@@ -95,23 +92,7 @@ pipeline {
             }
         }
 
-        // ✅ FIXED CODEARTIFACT STAGE
-        stage("Jar Publish to CodeArtifact") {
-            steps {
-                withAWS(credentials: 'aws-jenkins', region: awsRegion) {
-                    sh """
-                        aws codeartifact login \
-                          --tool maven \
-                          --domain ${DOMAIN} \
-                          --domain-owner ${accountId} \
-                          --repository ${REPO} \
-                          --region ${awsRegion}
-
-                        mvn deploy -DskipTests
-                    """
-                }
-            }
-        }
+        // ✅ Removed CodeArtifact stage
 
         stage("Docker Build") {
             steps {
