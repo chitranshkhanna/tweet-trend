@@ -26,22 +26,6 @@
         <java.version>17</java.version>
     </properties>
 
-    <!-- AWS CodeArtifact -->
-    <distributionManagement>
-        <repository>
-            <id>codeartifact</id>
-            <url>
-                https://YOUR_DOMAIN-374031960771.d.codeartifact.us-east-1.amazonaws.com/maven/YOUR_REPO/
-            </url>
-        </repository>
-        <snapshotRepository>
-            <id>codeartifact</id>
-            <url>
-                https://YOUR_DOMAIN-374031960771.d.codeartifact.us-east-1.amazonaws.com/maven/YOUR_REPO/
-            </url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <dependencies>
 
         <dependency>
@@ -80,7 +64,7 @@
 
         <plugins>
 
-            <!-- ✅ FIXED Spring Boot Plugin -->
+            <!-- ✅ Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
